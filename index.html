@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pineapple Nutri-Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        /* Modern Gradient Background */
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            padding: 20px; 
+            max-width: 500px; 
+            margin: 0 auto; 
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            color: #222;
+            min-height: 100vh;
+        }
+        
+        h1 { text-align: center; color: #fff; text-shadow: 1px 1px 4px rgba(0,0,0,0.2); }
+        
+        /* Glassmorphism Design System */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            margin-bottom: 20px;
+        }
+
+        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        
+        /* Accessible, High-Contrast Inputs & Buttons */
+        input { 
+            flex-grow: 1; padding: 15px; border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.8); 
+            background: rgba(255,255,255,0.7); font-size: 16px; 
+        }
+        input:focus { outline: 2px solid #0056b3; }
+
+        button { 
+            padding: 15px; border-radius: 12px; border: none; 
+            cursor: pointer; font-weight: bold; font-size: 16px;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button:active { transform: scale(0.98); }
+        button:focus { outline: 3px solid #fff; }
+        
+        .search-btn { background: #007bff; color: white; }
+        .camera-btn { background: #28a745; color: white; width: 100%; }
+        .toggle-btn { background: rgba(0, 0, 0, 0.6); color: white; width: 100%; margin-top: 15px; }
+        
+        /* Search Results List */
+        .results-list { list-style: none; padding: 0; margin-top: 15px; }
+        .result-item { 
+            background: rgba(255,255,255,0.8); padding: 15px; margin-bottom: 10px; 
+            border-radius: 12px; cursor: pointer; border-left: 6px solid #007bff; 
+        }
+        
+        .hidden { display: none; }
+        
+        /* Invisible layer exclusively for Screen Readers */
+        .sr-only { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+        
+        /* Grade Colors */
+        .grade-a { color: #1e7e34; font-weight: 900; font-size: 24px;}
+        .grade-e { color: #c82333; font-weight: 900; font-size: 24px;}
+        .grade-ghost { color: #d39e00; font-weight: 900; font-size: 24px;}
+    </style>
+</head>
+<body>
+
+    <h1>🍍 Pineapple Scanner</h1>
+
+    <div class="glass-panel">
+        <div class="input-group">
+            <input type="text" id="userInput" placeholder="Enter product or barcode..." aria-label="Search by product name or barcode numbers">
+            <button class="search-btn" onclick="handleSearch()" aria-label="Search Database">Search</button>
+        </div>
+        <button class="camera-btn" onclick="startCamera()" aria-label="Open Camera Barcode Scanner">📷 Scan Barcode</button>
+        <div id="reader" style="margin-top: 15px; border-radius: 12px; overflow: hidden;"></div>
+    </div>
+
+    <div aria-live="assertive" class="sr-only" id="audioAnnouncer"></div>
+
+    <div id="searchSuggestions" class="glass-panel hidden">
+        <h3 style="margin-top:0;">Select a product:</h3>
+        <ul id="resultsList" class="results-list" role="list"></ul>
+    </div>
+
+    <div id="resultArea" class="glass-panel hidden" aria-live="polite">
+        <h2 id="productName" style="margin-top:0; color:#111;">Product Name</h2>
+        <div id="healthGrade">Grade</div>
+        <p id="aiSummary" style="font-size: 18px; line-height: 1.5; color:#333; font-weight: 500;"></p>
+        
+        <button class="toggle-btn" onclick="toggleRawData()" aria-expanded="false" id="toggleDataBtn">🔍 View Raw DNA Data</button>
+        
+        <div id="rawDataCard" class="hidden" style="margin-top:15px; background:rgba(0,0,0,0.8); color:#0f0; padding:15px; border-radius:8px; overflow-x:auto;">
+            <pre id="rawJson" style="font-size: 12px; margin:0;"></pre>
+        </div>
+    </div>
+
+<script>
+        // Note: URL is relative so it works perfectly on Localhost OR Cloud
+        const BASE_URL = ""; 
+
+        async function handleSearch() {
+            const query = document.getElementById('userInput').value.trim();
+            if (!query) return;
+
+            speak("Searching database...");
+            document.getElementById('searchSuggestions').classList.add('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
+
+            try {
+                // STEP 1: Try exact barcode
+                const scanRes = await fetch(`${BASE_URL}/scan/${query}`);
+                if (scanRes.ok) {
+                    const data = await scanRes.json();
+                    showProductDetail(data);
+                } else {
+                    // STEP 2: Fallback to keyword search
+                    const searchRes = await fetch(`${BASE_URL}/search/${query}`);
+                    const searchData = await searchRes.json();
+                    
+                    if (searchData.results.length === 0) {
+                        alert("No products found.");
+                        speak("No products found in the database.");
+                    } else if (searchData.results.length === 1) {
+                        fetchByBarcode(searchData.results[0].code);
+                    } else {
+                        showResultsList(searchData.results);
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function showResultsList(results) {
+            const list = document.getElementById('resultsList');
+            list.innerHTML = "";
+            document.getElementById('searchSuggestions').classList.remove('hidden');
+            
+            results.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "result-item";
+                li.innerHTML = `<strong>${item.product_name}</strong><br><small>${item.brands || 'Unknown Brand'} | Grade: ${item.C10_health_grade_alpha}</small>`;
+                li.onclick = () => fetchByBarcode(item.code);
+                
+                // Accessibility setup for list items
+                li.setAttribute("role", "button");
+                li.setAttribute("tabindex", "0");
+                li.setAttribute("aria-label", `${item.product_name} by ${item.brands}. Health Grade ${item.C10_health_grade_alpha}. Tap to view full DNA.`);
+                
+                // Allow pressing "Enter" on keyboard to select item
+                li.addEventListener("keypress", function(event) {
+                    if (event.key === "Enter") fetchByBarcode(item.code);
+                });
+                
+                list.appendChild(li);
+            });
+            
+            speak(`${results.length} products found. Swipe down to browse the list.`);
+        }
+
+        async function fetchByBarcode(barcode) {
+            try {
+                const res = await fetch(`${BASE_URL}/scan/${barcode}`);
+                const data = await res.json();
+                showProductDetail(data);
+            } catch (err) {
+                speak("Error loading product details.");
+            }
+        }
+
+        function showProductDetail(data) {
+            document.getElementById('searchSuggestions').classList.add('hidden');
+            document.getElementById('resultArea').classList.remove('hidden');
+            document.getElementById('rawDataCard').classList.add('hidden');
+            document.getElementById('toggleDataBtn').setAttribute("aria-expanded", "false");
+            
+            document.getElementById('productName').innerText = data.product_name;
+            
+            // 👻 THE GHOST PROTOCOL DETECTOR
+            const isGhostData = (data.ingredients_text === "nan") || 
+                                (data["energy-kcal_100g"] === "0.0" && data.sugars_100g === "0.0");
+
+            let summary = "";
+            let grade = data.C10_health_grade_alpha || "Unknown";
+
+            if (isGhostData) {
+                // Override the UI if the data is blank
+                document.getElementById('healthGrade').innerHTML = `Health Grade: <span class="grade-ghost">? (Incomplete)</span>`;
+                summary = `Warning: We found this product, but the nutritional label data is missing. We cannot accurately calculate its health grade.`;
+                grade = "Unknown";
+            } else {
+                // Normal Grade styling
+                const gradeClass = grade === 'A' || grade === 'B' ? 'grade-a' : (grade === 'E' ? 'grade-e' : '');
+                document.getElementById('healthGrade').innerHTML = `Health Grade: <span class="${gradeClass}">${grade}</span>`;
+                
+                // 🧠 SMARTER NARRATIVE LAYER (Handles Natural Sugars)
+                summary = `This product is by ${data.brands || data.C8_parent_company}. `;
+                
+                if (data.C6_is_hfss_flag === "1") {
+                    if (data.C7_nova_processing_grade === "1" || data.C7_nova_processing_grade === "2") {
+                        summary += "Note: It flags high for sugar or fat, but these are naturally occurring in the raw ingredients. ";
+                    } else {
+                        summary += "Warning: High in Fat, Sugar, or Salt. ";
+                    }
+                } else {
+                    summary += "It passes the basic fat, sugar, and salt safety check. ";
+                }
+                
+                if (data.C7_nova_processing_grade === "4") summary += "It is heavily ultra-processed. ";
+                if (data.C4_jain_index === "1") summary += "It is Jain compliant. ";
+            }
+            
+            document.getElementById('aiSummary').innerText = summary;
+            document.getElementById('rawJson').innerText = JSON.stringify(data, null, 2);
+            
+            speak(`Product Loaded: ${data.product_name}. Health Grade: ${grade}. ${summary}`);
+        }
+
+        function toggleRawData() {
+            const rawCard = document.getElementById('rawDataCard');
+            const btn = document.getElementById('toggleDataBtn');
+            const isHidden = rawCard.classList.contains('hidden');
+            
+            if (isHidden) {
+                rawCard.classList.remove('hidden');
+                btn.setAttribute("aria-expanded", "true");
+                speak("Raw data expanded.");
+            } else {
+                rawCard.classList.add('hidden');
+                btn.setAttribute("aria-expanded", "false");
+                speak("Raw data collapsed.");
+            }
+        }
+
+        function startCamera() {
+            speak("Opening camera scanner. Please point at a barcode.");
+            document.getElementById('reader').classList.remove('hidden');
+            const html5QrcodeScanner = new Html5Qrcode("reader");
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: 250 }, 
+                (text) => {
+                    html5QrcodeScanner.stop();
+                    document.getElementById('reader').classList.add('hidden');
+                    speak("Barcode detected. Fetching data.");
+                    fetchByBarcode(text);
+                },
+                (err) => { /* Ignore standard scanning errors */ }
+            ).catch(err => {
+                alert("Camera error. Check permissions.");
+                speak("Camera error. Please use manual search.");
+            });
+        }
+
+        function speak(text) {
+            document.getElementById('audioAnnouncer').innerText = text;
+        }
+    </script>
+</body>
+</html>
