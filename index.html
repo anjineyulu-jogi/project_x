@@ -16,12 +16,8 @@
 
         body { 
             font-family: system-ui, -apple-system, sans-serif; 
-            padding: 15px; 
-            max-width: 500px; 
-            margin: 0 auto; 
-            background: #f0f2f5;
-            color: var(--dark);
-            line-height: 1.5;
+            padding: 15px; max-width: 500px; margin: 0 auto; 
+            background: #f0f2f5; color: var(--dark); line-height: 1.5;
         }
 
         h1 { text-align: center; color: var(--dark); margin-bottom: 20px; }
@@ -33,8 +29,7 @@
 
         .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
         input { flex-grow: 1; padding: 12px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px; }
-        input:focus { border-color: var(--primary); outline: none; }
-
+        
         button { 
             padding: 12px; border-radius: 8px; border: none; 
             cursor: pointer; font-weight: bold; font-size: 16px;
@@ -58,7 +53,10 @@
         .result-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
 
         /* Grade Display */
-        .grade-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .grade-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; 
+        }
         .grade-badge { font-size: 32px; font-weight: 900; }
         .grade-a { color: var(--success); }
         .grade-e { color: var(--danger); }
@@ -89,10 +87,10 @@
 
     <div id="contributeArea" class="card hidden">
         <h3 style="color:var(--danger); margin:0;">Product Not Found</h3>
-        <p>This item isn't in our DNA database yet. Add it?</p>
+        <p>Not in our DNA database yet. Help the community by adding it!</p>
         <input type="text" id="contribName" placeholder="Product Name" style="width:90%; margin-bottom:10px;">
         <input type="text" id="contribBrand" placeholder="Brand Name" style="width:90%;">
-        <button class="contribute-btn" onclick="submitContribution()">Submit to Community</button>
+        <button class="contribute-btn" onclick="submitContribution()">Submit Product</button>
     </div>
 
     <div id="searchSuggestions" class="card hidden">
@@ -105,7 +103,7 @@
             <div id="healthGrade" class="grade-badge">A</div>
         </div>
         
-        <p id="aiSummary" style="font-size: 17px; font-weight: 500; color: #333;"></p>
+        <p id="aiSummary" style="font-size: 17px; font-weight: 500; color: #333;">Analyzing...</p>
         
         <div id="aiWarnings" style="color: var(--danger); font-size: 14px; font-weight: bold; margin-bottom: 10px;"></div>
 
@@ -172,19 +170,20 @@
             document.getElementById('resultArea').classList.remove('hidden');
             document.getElementById('productName').innerText = data.product_name;
             
-            // AI vs DB Logic
+            // PRIORITY: Use AI Grade first, then Database Grade
             const grade = data.ai_grade || data.C10_health_grade_alpha || "?";
             const badge = document.getElementById('healthGrade');
             badge.innerText = grade;
             badge.className = `grade-badge ${grade === 'A' || grade === 'B' ? 'grade-a' : (grade === 'E' ? 'grade-e' : '')}`;
             
-            document.getElementById('aiSummary').innerText = data.ai_narrative || "Summary not available.";
+            const summary = data.ai_narrative || "Analysis complete. Review raw DNA for details.";
+            document.getElementById('aiSummary').innerText = summary;
             
             const warnings = data.ai_warnings ? data.ai_warnings.join(", ") : "";
             document.getElementById('aiWarnings').innerText = warnings ? "⚠️ " + warnings : "";
 
             document.getElementById('rawJson').innerText = JSON.stringify(data, null, 2);
-            speak(`${data.product_name}. Grade ${grade}. ${data.ai_narrative}`);
+            speak(`${data.product_name}. Health Grade ${grade}. ${summary}`);
         }
 
         function startCamera() {
