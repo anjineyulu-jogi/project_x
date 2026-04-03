@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pineapple Nutri-Scanner</title>
+    <title>Pineapple AI Nutri-Scanner</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root {
@@ -27,79 +27,52 @@
         h1 { text-align: center; color: var(--dark); margin-bottom: 20px; }
 
         .card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
+            background: white; border-radius: 12px; padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px;
         }
 
         .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
-        
-        input { 
-            flex-grow: 1; padding: 12px; border-radius: 8px; 
-            border: 2px solid #ddd; font-size: 16px; 
-        }
+        input { flex-grow: 1; padding: 12px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px; }
         input:focus { border-color: var(--primary); outline: none; }
 
         button { 
             padding: 12px; border-radius: 8px; border: none; 
             cursor: pointer; font-weight: bold; font-size: 16px;
-            transition: opacity 0.2s;
         }
-        button:active { opacity: 0.8; }
-
+        
         .search-btn { background: var(--primary); color: white; }
         .camera-btn { background: var(--dark); color: white; width: 100%; margin-bottom: 10px;}
         .contribute-btn { background: var(--success); color: white; width: 100%; margin-top: 10px; }
         .feedback-btn { background: #eee; color: var(--dark); width: 100%; margin-top: 10px; font-size: 14px; }
 
-        /* 🎯 SCANNER OVERLAY & ANIMATION */
-        #reader { 
-            position: relative; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            background: #000;
-        }
+        /* 🎯 SCANNER OVERLAY */
+        #reader { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
         .laser {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 3px;
-            background: var(--success);
-            box-shadow: 0 0 12px var(--success);
-            z-index: 10;
-            animation: scanning 2s infinite linear;
-            display: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+            background: var(--success); box-shadow: 0 0 12px var(--success);
+            z-index: 10; animation: scanning 2s infinite linear; display: none;
         }
-        @keyframes scanning {
-            0% { top: 0%; }
-            50% { top: 100%; }
-            100% { top: 0%; }
-        }
+        @keyframes scanning { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
 
         .results-list { list-style: none; padding: 0; }
-        .result-item { 
-            padding: 15px; border-bottom: 1px solid #eee; cursor: pointer;
-        }
+        .result-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
 
-        .grade-badge { font-size: 28px; font-weight: 900; display: block; margin: 10px 0; }
+        /* Grade Display */
+        .grade-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .grade-badge { font-size: 32px; font-weight: 900; }
         .grade-a { color: var(--success); }
         .grade-e { color: var(--danger); }
         
         .hidden { display: none; }
         .sr-only { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
-        /* Contribute Form */
-        .form-label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         .social-links { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-        .social-link { 
-            text-decoration: none; padding: 12px; border-radius: 8px; 
-            text-align: center; font-weight: bold; color: white; 
-        }
+        .social-link { text-decoration: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; color: white; }
     </style>
 </head>
 <body>
 
-    <h1>🍍 Pineapple</h1>
+    <h1>🍍 Pineapple AI</h1>
 
     <div class="card">
         <div class="input-group">
@@ -107,7 +80,6 @@
             <button class="search-btn" onclick="handleSearch()">Search</button>
         </div>
         <button class="camera-btn" onclick="startCamera()">📷 Scan Barcode</button>
-        
         <div id="reader" class="hidden">
             <div class="laser" id="scannerLaser"></div>
         </div>
@@ -116,13 +88,11 @@
     <div aria-live="assertive" class="sr-only" id="audioAnnouncer"></div>
 
     <div id="contributeArea" class="card hidden">
-        <h3 style="color:var(--danger); margin-top:0;">Product Not Found</h3>
-        <p>Help the community by adding this product!</p>
-        <label class="form-label">Product Name</label>
-        <input type="text" id="contribName" placeholder="e.g. Maggi Masala">
-        <label class="form-label" style="margin-top:10px;">Brand Name</label>
-        <input type="text" id="contribBrand" placeholder="e.g. Nestle">
-        <button class="contribute-btn" onclick="submitContribution()">Submit Product</button>
+        <h3 style="color:var(--danger); margin:0;">Product Not Found</h3>
+        <p>This item isn't in our DNA database yet. Add it?</p>
+        <input type="text" id="contribName" placeholder="Product Name" style="width:90%; margin-bottom:10px;">
+        <input type="text" id="contribBrand" placeholder="Brand Name" style="width:90%;">
+        <button class="contribute-btn" onclick="submitContribution()">Submit to Community</button>
     </div>
 
     <div id="searchSuggestions" class="card hidden">
@@ -130,17 +100,23 @@
     </div>
 
     <div id="resultArea" class="card hidden">
-        <h2 id="productName" style="margin:0;"></h2>
-        <div id="healthGrade" class="grade-badge"></div>
-        <p id="aiSummary"></p>
-        <button class="feedback-btn" onclick="toggleRawData()">View Raw Data</button>
-        <div id="rawDataCard" class="hidden" style="background:#222; color:#0f0; padding:10px; border-radius:5px; margin-top:10px; font-family:monospace; font-size:12px;">
+        <div class="grade-header">
+            <h2 id="productName" style="margin:0; font-size: 20px;">Product Name</h2>
+            <div id="healthGrade" class="grade-badge">A</div>
+        </div>
+        
+        <p id="aiSummary" style="font-size: 17px; font-weight: 500; color: #333;"></p>
+        
+        <div id="aiWarnings" style="color: var(--danger); font-size: 14px; font-weight: bold; margin-bottom: 10px;"></div>
+
+        <button class="feedback-btn" onclick="toggleRawData()">View Raw DNA</button>
+        <div id="rawDataCard" class="hidden" style="background:#222; color:#0f0; padding:10px; border-radius:5px; margin-top:10px; font-family:monospace; font-size:11px; overflow-x:auto;">
             <pre id="rawJson"></pre>
         </div>
     </div>
 
     <div class="card">
-        <h3 style="margin-top:0;">Feedback & Support</h3>
+        <h3 style="margin-top:0;">Support</h3>
         <div class="social-links">
             <a href="https://wa.me/919611249874" class="social-link" style="background:#25D366;">WhatsApp Support</a>
             <a href="mailto:jogi.workdocs@gmail.com" class="social-link" style="background:#EA4335;">Email Feedback</a>
@@ -163,27 +139,10 @@
                 } else {
                     const searchRes = await fetch(`${BASE_URL}/search/${query}`);
                     const searchData = await searchRes.json();
-                    if (searchData.results.length === 0) {
-                        showContributeForm(query);
-                    } else {
-                        showResultsList(searchData.results);
-                    }
+                    if (searchData.results.length === 0) showContributeForm(query);
+                    else showResultsList(searchData.results);
                 }
-            } catch (e) { speak("Search failed."); }
-        }
-
-        function showContributeForm(query) {
-            document.getElementById('contributeArea').classList.remove('hidden');
-            if(isNaN(query)) document.getElementById('contribName').value = query;
-            speak("Product not found. Please help us by entering the name below.");
-        }
-
-        function submitContribution() {
-            const name = document.getElementById('contribName').value;
-            const brand = document.getElementById('contribBrand').value;
-            alert(`Thank you! "${name}" by ${brand} has been sent for review.`);
-            document.getElementById('contributeArea').classList.add('hidden');
-            speak("Contribution received. Thank you friend.");
+            } catch (e) { speak("Search error."); }
         }
 
         function showResultsList(results) {
@@ -197,13 +156,15 @@
                 li.onclick = () => fetchByBarcode(item.code);
                 list.appendChild(li);
             });
+            speak(`${results.length} matches found.`);
         }
 
         async function fetchByBarcode(barcode) {
             try {
+                speak("Analyzing with AI...");
                 const res = await fetch(`${BASE_URL}/scan/${barcode}`);
                 showProductDetail(await res.json());
-            } catch (e) { speak("Error loading data."); }
+            } catch (e) { speak("Analysis failed."); }
         }
 
         function showProductDetail(data) {
@@ -211,17 +172,19 @@
             document.getElementById('resultArea').classList.remove('hidden');
             document.getElementById('productName').innerText = data.product_name;
             
-            let grade = data.C10_health_grade_alpha || "Unknown";
-            const gradeClass = (grade === 'A' || grade === 'B') ? 'grade-a' : (grade === 'E' ? 'grade-e' : '');
-            document.getElementById('healthGrade').innerHTML = `Grade: <span class="${gradeClass}">${grade}</span>`;
+            // AI vs DB Logic
+            const grade = data.ai_grade || data.C10_health_grade_alpha || "?";
+            const badge = document.getElementById('healthGrade');
+            badge.innerText = grade;
+            badge.className = `grade-badge ${grade === 'A' || grade === 'B' ? 'grade-a' : (grade === 'E' ? 'grade-e' : '')}`;
             
-            let summary = `By ${data.brands || 'Unknown'}. `;
-            summary += data.C6_is_hfss_flag === "1" ? "High in fat, sugar, or salt. " : "Healthy nutrient balance. ";
-            if (data.C7_nova_processing_grade === "4") summary += "Heavily processed.";
+            document.getElementById('aiSummary').innerText = data.ai_narrative || "Summary not available.";
             
-            document.getElementById('aiSummary').innerText = summary;
+            const warnings = data.ai_warnings ? data.ai_warnings.join(", ") : "";
+            document.getElementById('aiWarnings').innerText = warnings ? "⚠️ " + warnings : "";
+
             document.getElementById('rawJson').innerText = JSON.stringify(data, null, 2);
-            speak(`Loaded ${data.product_name}. Grade ${grade}. ${summary}`);
+            speak(`${data.product_name}. Grade ${grade}. ${data.ai_narrative}`);
         }
 
         function startCamera() {
@@ -229,21 +192,20 @@
             const laser = document.getElementById('scannerLaser');
             reader.classList.remove('hidden');
             laser.style.display = 'block';
-            speak("Scanner active. Center the barcode.");
+            speak("Point camera at barcode.");
 
             const scanner = new Html5Qrcode("reader");
             scanner.start(
                 { facingMode: "environment" }, 
                 { fps: 15, qrbox: {width: 250, height: 150} },
                 (text) => {
-                    if (navigator.vibrate) navigator.vibrate(200); // 📳 Vibrate on success
+                    if (navigator.vibrate) navigator.vibrate(200);
                     scanner.stop();
                     reader.classList.add('hidden');
-                    laser.style.display = 'none';
                     fetchByBarcode(text);
                 },
                 () => {}
-            ).catch(() => speak("Camera error."));
+            ).catch(() => speak("Camera blocked."));
         }
 
         function resetUI() {
@@ -253,12 +215,21 @@
         }
 
         function toggleRawData() {
-            const card = document.getElementById('rawDataCard');
-            card.classList.toggle('hidden');
+            document.getElementById('rawDataCard').classList.toggle('hidden');
         }
 
         function speak(text) {
             document.getElementById('audioAnnouncer').innerText = text;
+        }
+
+        function showContributeForm(q) {
+            document.getElementById('contributeArea').classList.remove('hidden');
+            if(isNaN(q)) document.getElementById('contribName').value = q;
+        }
+
+        function submitContribution() {
+            alert("Thanks! Added to community review.");
+            document.getElementById('contributeArea').classList.add('hidden');
         }
     </script>
 </body>

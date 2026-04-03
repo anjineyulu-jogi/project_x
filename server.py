@@ -1,27 +1,43 @@
 import os
 import zipfile
 import sqlite3
+import json
+import google.generativeai as genai
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-# --- CONFIGURATION (Now Cloud-Ready & Relative) ---
+# --- 🧠 GEMINI AI CONFIGURATION ---
+# Using the key you provided
+genai.configure(api_key="AIzaSyCPwXJN6vTTpXYez6lO-xNBtZqGg2-k0_8")
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+SYSTEM_PROMPT = """
+You are the Pineapple Nutrition Brain, a biochemical nutritionist. 
+Analyze the provided JSON food data. Cross-reference NOVA processing (C7) with ingredients.
+If a product is NOVA 4 but has simple ingredients (like Yogurt with pectin), re-evaluate the grade.
+Check Jain compliance (C4) against the ingredients list.
+Output ONLY a valid JSON object with:
+{
+  "corrected_grade": "A-E",
+  "narrative": "2-sentence warm explanation for a buddy.",
+  "warning_flags": ["List specific harmful additives"],
+  "healthier_alternative": "A generic suggestion"
+}
+"""
+
+# --- 🚀 THE DATABASE ENGINE ---
 DB_FILE = "pineapple.db"
 ZIP_FILE = "pineapple.zip"
 
-# --- 🚀 THE AUTO-UNZIPPER ---
-# When Render starts up, it will check if the DB is unzipped.
-# If it isn't, it unzips it silently in the background!
 if not os.path.exists(DB_FILE):
     if os.path.exists(ZIP_FILE):
         print(f"📦 Extracting {ZIP_FILE}...")
         with zipfile.ZipFile(ZIP_FILE, 'r') as zip_ref:
             zip_ref.extractall(".")
         print("✅ Extraction complete!")
-    else:
-        print("⚠️ WARNING: Neither pineapple.db nor pineapple.zip found!")
 
-app = FastAPI(title="Pineapple Nutri-Scanner API")
+app = FastAPI(title="Pineapple AI Nutri-Scanner")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,80 +47,77 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🌐 Serve the Frontend Webpage
+# --- 🤖 THE AI ANALYSIS LAYER ---
+async def analyze_with_gemini(product_data):
+    """Sends raw DB data to Gemini for deep biochemical research."""
+    try:
+        combined_input = f"{SYSTEM_PROMPT}\n\nDATA:\n{json.dumps(product_data)}"
+        response = model.generate_content(combined_input)
+        # Clean the response in case Gemini adds markdown backticks
+        clean_json = response.text.replace("```json", "").replace("```", "").strip()
+        return json.loads(clean_json)
+    except Exception as e:
+        print(f"AI Error: {e}")
+        return None
+
+# --- 🌐 ROUTES ---
+
 @app.get("/", response_class=HTMLResponse)
 def serve_webpage():
-    """Serves the frontend index.html file to users."""
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "<h1>Error: index.html not found.</h1><p>Make sure it is uploaded to GitHub!</p>"
+        return "<h1>Error: index.html not found.</h1>"
 
-# 🔍 Keyword Search (Finds products by Name or Brand, IGNORING GHOSTS)
-@app.get("/search/{query}")
-def search_by_name(query: str):
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Search for the query, but EXCLUDE ghosts (where ingredients are missing)
-        search_term = f"%{query}%"
-        cursor.execute("""
-            SELECT code, product_name, brands, C10_health_grade_alpha 
-            FROM products 
-            WHERE (product_name LIKE ? OR brands LIKE ?) 
-            AND ingredients_text != 'nan' 
-            AND "energy-kcal_100g" != 'nan'
-            AND "energy-kcal_100g" != '0.0'
-            LIMIT 15
-        """, (search_term, search_term))
-        
-        rows = cursor.fetchall()
-        conn.close()
-        
-        return {"results": [dict(row) for row in rows]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-# 📷 Exact Barcode Scan
 @app.get("/scan/{barcode}")
-def scan_product(barcode: str):
-    """Fetches the C1-C10 DNA for a scanned barcode."""
+async def scan_product(barcode: str):
+    """Fetches DNA from DB, then passes it through the Gemini Brain."""
     try:
         conn = sqlite3.connect(DB_FILE)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        
         cursor.execute("SELECT * FROM products WHERE code = ?", (barcode,))
         row = cursor.fetchone()
         conn.close()
         
-        if row:
-            return dict(row)
-        else:
-            raise HTTPException(status_code=404, detail="Database error: 404: Product not found in database.")
+        if not row:
+            raise HTTPException(status_code=404, detail="Product not in database.")
+
+        product_data = dict(row)
+        
+        # ⚡️ ACTIVATE GEMINI RESEARCH ⚡️
+        ai_research = await analyze_with_gemini(product_data)
+        
+        # Merge AI insights into the original data
+        if ai_research:
+            product_data["ai_grade"] = ai_research.get("corrected_grade")
+            product_data["ai_narrative"] = ai_research.get("narrative")
+            product_data["ai_warnings"] = ai_research.get("warning_flags")
+            product_data["ai_alt"] = ai_research.get("healthier_alternative")
+            
+        return product_data
             
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-# 🛠️ Developer Tool
-@app.get("/random")
-def get_random_products():
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT code, product_name, brands FROM products WHERE code IS NOT NULL LIMIT 3")
-        rows = cursor.fetchall()
-        conn.close()
-        return {"test_products": [dict(row) for row in rows]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+@app.get("/search/{query}")
+def search_by_name(query: str):
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    search_term = f"%{query}%"
+    cursor.execute("""
+        SELECT code, product_name, brands, C10_health_grade_alpha 
+        FROM products 
+        WHERE (product_name LIKE ? OR brands LIKE ?) 
+        AND ingredients_text != 'nan' 
+        LIMIT 15
+    """, (search_term, search_term))
+    rows = cursor.fetchall()
+    conn.close()
+    return {"results": [dict(row) for row in rows]}
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting the Pineapple Engine...")
-    # 0.0.0.0 allows cloud platforms to route traffic to your app
     uvicorn.run(app, host="0.0.0.0", port=8000)
