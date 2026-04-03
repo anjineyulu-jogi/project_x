@@ -6,261 +6,255 @@
     <title>Pineapple Nutri-Scanner</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        /* Modern Gradient Background */
+        :root {
+            --primary: #007bff;
+            --success: #28a745;
+            --danger: #dc3545;
+            --dark: #212529;
+            --light: #f8f9fa;
+        }
+
         body { 
             font-family: system-ui, -apple-system, sans-serif; 
-            padding: 20px; 
+            padding: 15px; 
             max-width: 500px; 
             margin: 0 auto; 
-            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
-            color: #222;
-            min-height: 100vh;
+            background: #f0f2f5;
+            color: var(--dark);
+            line-height: 1.5;
         }
-        
-        h1 { text-align: center; color: #fff; text-shadow: 1px 1px 4px rgba(0,0,0,0.2); }
-        
-        /* Glassmorphism Design System */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.45);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
+
+        h1 { text-align: center; color: var(--dark); margin-bottom: 20px; }
+
+        .card {
+            background: white;
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
 
-        .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
         
-        /* Accessible, High-Contrast Inputs & Buttons */
         input { 
-            flex-grow: 1; padding: 15px; border-radius: 12px; 
-            border: 1px solid rgba(255,255,255,0.8); 
-            background: rgba(255,255,255,0.7); font-size: 16px; 
+            flex-grow: 1; padding: 12px; border-radius: 8px; 
+            border: 2px solid #ddd; font-size: 16px; 
         }
-        input:focus { outline: 2px solid #0056b3; }
+        input:focus { border-color: var(--primary); outline: none; }
 
         button { 
-            padding: 15px; border-radius: 12px; border: none; 
+            padding: 12px; border-radius: 8px; border: none; 
             cursor: pointer; font-weight: bold; font-size: 16px;
-            transition: transform 0.1s, opacity 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: opacity 0.2s;
         }
-        button:active { transform: scale(0.98); }
-        button:focus { outline: 3px solid #fff; }
-        
-        .search-btn { background: #007bff; color: white; }
-        .camera-btn { background: #28a745; color: white; width: 100%; }
-        .toggle-btn { background: rgba(0, 0, 0, 0.6); color: white; width: 100%; margin-top: 15px; }
-        
-        /* Search Results List */
-        .results-list { list-style: none; padding: 0; margin-top: 15px; }
+        button:active { opacity: 0.8; }
+
+        .search-btn { background: var(--primary); color: white; }
+        .camera-btn { background: var(--dark); color: white; width: 100%; margin-bottom: 10px;}
+        .contribute-btn { background: var(--success); color: white; width: 100%; margin-top: 10px; }
+        .feedback-btn { background: #eee; color: var(--dark); width: 100%; margin-top: 10px; font-size: 14px; }
+
+        /* 🎯 SCANNER OVERLAY & ANIMATION */
+        #reader { 
+            position: relative; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            background: #000;
+        }
+        .laser {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 3px;
+            background: var(--success);
+            box-shadow: 0 0 12px var(--success);
+            z-index: 10;
+            animation: scanning 2s infinite linear;
+            display: none;
+        }
+        @keyframes scanning {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+
+        .results-list { list-style: none; padding: 0; }
         .result-item { 
-            background: rgba(255,255,255,0.8); padding: 15px; margin-bottom: 10px; 
-            border-radius: 12px; cursor: pointer; border-left: 6px solid #007bff; 
+            padding: 15px; border-bottom: 1px solid #eee; cursor: pointer;
         }
+
+        .grade-badge { font-size: 28px; font-weight: 900; display: block; margin: 10px 0; }
+        .grade-a { color: var(--success); }
+        .grade-e { color: var(--danger); }
         
         .hidden { display: none; }
-        
-        /* Invisible layer exclusively for Screen Readers */
         .sr-only { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
-        
-        /* Grade Colors */
-        .grade-a { color: #1e7e34; font-weight: 900; font-size: 24px;}
-        .grade-e { color: #c82333; font-weight: 900; font-size: 24px;}
-        .grade-ghost { color: #d39e00; font-weight: 900; font-size: 24px;}
+
+        /* Contribute Form */
+        .form-label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        .social-links { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .social-link { 
+            text-decoration: none; padding: 12px; border-radius: 8px; 
+            text-align: center; font-weight: bold; color: white; 
+        }
     </style>
 </head>
 <body>
 
-    <h1>🍍 Pineapple Scanner</h1>
+    <h1>🍍 Pineapple</h1>
 
-    <div class="glass-panel">
+    <div class="card">
         <div class="input-group">
-            <input type="text" id="userInput" placeholder="Enter product or barcode..." aria-label="Search by product name or barcode numbers">
-            <button class="search-btn" onclick="handleSearch()" aria-label="Search Database">Search</button>
+            <input type="text" id="userInput" placeholder="Search product..." aria-label="Product search">
+            <button class="search-btn" onclick="handleSearch()">Search</button>
         </div>
-        <button class="camera-btn" onclick="startCamera()" aria-label="Open Camera Barcode Scanner">📷 Scan Barcode</button>
-        <div id="reader" style="margin-top: 15px; border-radius: 12px; overflow: hidden;"></div>
+        <button class="camera-btn" onclick="startCamera()">📷 Scan Barcode</button>
+        
+        <div id="reader" class="hidden">
+            <div class="laser" id="scannerLaser"></div>
+        </div>
     </div>
 
     <div aria-live="assertive" class="sr-only" id="audioAnnouncer"></div>
 
-    <div id="searchSuggestions" class="glass-panel hidden">
-        <h3 style="margin-top:0;">Select a product:</h3>
-        <ul id="resultsList" class="results-list" role="list"></ul>
+    <div id="contributeArea" class="card hidden">
+        <h3 style="color:var(--danger); margin-top:0;">Product Not Found</h3>
+        <p>Help the community by adding this product!</p>
+        <label class="form-label">Product Name</label>
+        <input type="text" id="contribName" placeholder="e.g. Maggi Masala">
+        <label class="form-label" style="margin-top:10px;">Brand Name</label>
+        <input type="text" id="contribBrand" placeholder="e.g. Nestle">
+        <button class="contribute-btn" onclick="submitContribution()">Submit Product</button>
     </div>
 
-    <div id="resultArea" class="glass-panel hidden" aria-live="polite">
-        <h2 id="productName" style="margin-top:0; color:#111;">Product Name</h2>
-        <div id="healthGrade">Grade</div>
-        <p id="aiSummary" style="font-size: 18px; line-height: 1.5; color:#333; font-weight: 500;"></p>
-        
-        <button class="toggle-btn" onclick="toggleRawData()" aria-expanded="false" id="toggleDataBtn">🔍 View Raw DNA Data</button>
-        
-        <div id="rawDataCard" class="hidden" style="margin-top:15px; background:rgba(0,0,0,0.8); color:#0f0; padding:15px; border-radius:8px; overflow-x:auto;">
-            <pre id="rawJson" style="font-size: 12px; margin:0;"></pre>
+    <div id="searchSuggestions" class="card hidden">
+        <ul id="resultsList" class="results-list"></ul>
+    </div>
+
+    <div id="resultArea" class="card hidden">
+        <h2 id="productName" style="margin:0;"></h2>
+        <div id="healthGrade" class="grade-badge"></div>
+        <p id="aiSummary"></p>
+        <button class="feedback-btn" onclick="toggleRawData()">View Raw Data</button>
+        <div id="rawDataCard" class="hidden" style="background:#222; color:#0f0; padding:10px; border-radius:5px; margin-top:10px; font-family:monospace; font-size:12px;">
+            <pre id="rawJson"></pre>
         </div>
     </div>
 
-<script>
-        // Note: URL is relative so it works perfectly on Localhost OR Cloud
-        const BASE_URL = ""; 
+    <div class="card">
+        <h3 style="margin-top:0;">Feedback & Support</h3>
+        <div class="social-links">
+            <a href="https://wa.me/919611249874" class="social-link" style="background:#25D366;">WhatsApp Support</a>
+            <a href="mailto:jogi.workdocs@gmail.com" class="social-link" style="background:#EA4335;">Email Feedback</a>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = "";
 
         async function handleSearch() {
             const query = document.getElementById('userInput').value.trim();
             if (!query) return;
-
-            speak("Searching database...");
-            document.getElementById('searchSuggestions').classList.add('hidden');
-            document.getElementById('resultArea').classList.add('hidden');
+            resetUI();
+            speak("Searching...");
 
             try {
-                // STEP 1: Try exact barcode
                 const scanRes = await fetch(`${BASE_URL}/scan/${query}`);
                 if (scanRes.ok) {
-                    const data = await scanRes.json();
-                    showProductDetail(data);
+                    showProductDetail(await scanRes.json());
                 } else {
-                    // STEP 2: Fallback to keyword search
                     const searchRes = await fetch(`${BASE_URL}/search/${query}`);
                     const searchData = await searchRes.json();
-                    
                     if (searchData.results.length === 0) {
-                        alert("No products found.");
-                        speak("No products found in the database.");
-                    } else if (searchData.results.length === 1) {
-                        fetchByBarcode(searchData.results[0].code);
+                        showContributeForm(query);
                     } else {
                         showResultsList(searchData.results);
                     }
                 }
-            } catch (err) {
-                console.error(err);
-            }
+            } catch (e) { speak("Search failed."); }
+        }
+
+        function showContributeForm(query) {
+            document.getElementById('contributeArea').classList.remove('hidden');
+            if(isNaN(query)) document.getElementById('contribName').value = query;
+            speak("Product not found. Please help us by entering the name below.");
+        }
+
+        function submitContribution() {
+            const name = document.getElementById('contribName').value;
+            const brand = document.getElementById('contribBrand').value;
+            alert(`Thank you! "${name}" by ${brand} has been sent for review.`);
+            document.getElementById('contributeArea').classList.add('hidden');
+            speak("Contribution received. Thank you friend.");
         }
 
         function showResultsList(results) {
             const list = document.getElementById('resultsList');
             list.innerHTML = "";
             document.getElementById('searchSuggestions').classList.remove('hidden');
-            
             results.forEach(item => {
                 const li = document.createElement('li');
                 li.className = "result-item";
-                li.innerHTML = `<strong>${item.product_name}</strong><br><small>${item.brands || 'Unknown Brand'} | Grade: ${item.C10_health_grade_alpha}</small>`;
+                li.innerHTML = `<strong>${item.product_name}</strong><br><small>${item.brands || 'Unknown'}</small>`;
                 li.onclick = () => fetchByBarcode(item.code);
-                
-                // Accessibility setup for list items
-                li.setAttribute("role", "button");
-                li.setAttribute("tabindex", "0");
-                li.setAttribute("aria-label", `${item.product_name} by ${item.brands}. Health Grade ${item.C10_health_grade_alpha}. Tap to view full DNA.`);
-                
-                // Allow pressing "Enter" on keyboard to select item
-                li.addEventListener("keypress", function(event) {
-                    if (event.key === "Enter") fetchByBarcode(item.code);
-                });
-                
                 list.appendChild(li);
             });
-            
-            speak(`${results.length} products found. Swipe down to browse the list.`);
         }
 
         async function fetchByBarcode(barcode) {
             try {
                 const res = await fetch(`${BASE_URL}/scan/${barcode}`);
-                const data = await res.json();
-                showProductDetail(data);
-            } catch (err) {
-                speak("Error loading product details.");
-            }
+                showProductDetail(await res.json());
+            } catch (e) { speak("Error loading data."); }
         }
 
         function showProductDetail(data) {
-            document.getElementById('searchSuggestions').classList.add('hidden');
+            resetUI();
             document.getElementById('resultArea').classList.remove('hidden');
-            document.getElementById('rawDataCard').classList.add('hidden');
-            document.getElementById('toggleDataBtn').setAttribute("aria-expanded", "false");
-            
             document.getElementById('productName').innerText = data.product_name;
             
-            // 👻 THE GHOST PROTOCOL DETECTOR
-            const isGhostData = (data.ingredients_text === "nan") || 
-                                (data["energy-kcal_100g"] === "0.0" && data.sugars_100g === "0.0");
-
-            let summary = "";
             let grade = data.C10_health_grade_alpha || "Unknown";
-
-            if (isGhostData) {
-                // Override the UI if the data is blank
-                document.getElementById('healthGrade').innerHTML = `Health Grade: <span class="grade-ghost">? (Incomplete)</span>`;
-                summary = `Warning: We found this product, but the nutritional label data is missing. We cannot accurately calculate its health grade.`;
-                grade = "Unknown";
-            } else {
-                // Normal Grade styling
-                const gradeClass = grade === 'A' || grade === 'B' ? 'grade-a' : (grade === 'E' ? 'grade-e' : '');
-                document.getElementById('healthGrade').innerHTML = `Health Grade: <span class="${gradeClass}">${grade}</span>`;
-                
-                // 🧠 SMARTER NARRATIVE LAYER (Handles Natural Sugars)
-                summary = `This product is by ${data.brands || data.C8_parent_company}. `;
-                
-                if (data.C6_is_hfss_flag === "1") {
-                    if (data.C7_nova_processing_grade === "1" || data.C7_nova_processing_grade === "2") {
-                        summary += "Note: It flags high for sugar or fat, but these are naturally occurring in the raw ingredients. ";
-                    } else {
-                        summary += "Warning: High in Fat, Sugar, or Salt. ";
-                    }
-                } else {
-                    summary += "It passes the basic fat, sugar, and salt safety check. ";
-                }
-                
-                if (data.C7_nova_processing_grade === "4") summary += "It is heavily ultra-processed. ";
-                if (data.C4_jain_index === "1") summary += "It is Jain compliant. ";
-            }
+            const gradeClass = (grade === 'A' || grade === 'B') ? 'grade-a' : (grade === 'E' ? 'grade-e' : '');
+            document.getElementById('healthGrade').innerHTML = `Grade: <span class="${gradeClass}">${grade}</span>`;
+            
+            let summary = `By ${data.brands || 'Unknown'}. `;
+            summary += data.C6_is_hfss_flag === "1" ? "High in fat, sugar, or salt. " : "Healthy nutrient balance. ";
+            if (data.C7_nova_processing_grade === "4") summary += "Heavily processed.";
             
             document.getElementById('aiSummary').innerText = summary;
             document.getElementById('rawJson').innerText = JSON.stringify(data, null, 2);
-            
-            speak(`Product Loaded: ${data.product_name}. Health Grade: ${grade}. ${summary}`);
-        }
-
-        function toggleRawData() {
-            const rawCard = document.getElementById('rawDataCard');
-            const btn = document.getElementById('toggleDataBtn');
-            const isHidden = rawCard.classList.contains('hidden');
-            
-            if (isHidden) {
-                rawCard.classList.remove('hidden');
-                btn.setAttribute("aria-expanded", "true");
-                speak("Raw data expanded.");
-            } else {
-                rawCard.classList.add('hidden');
-                btn.setAttribute("aria-expanded", "false");
-                speak("Raw data collapsed.");
-            }
+            speak(`Loaded ${data.product_name}. Grade ${grade}. ${summary}`);
         }
 
         function startCamera() {
-            speak("Opening camera scanner. Please point at a barcode.");
-            document.getElementById('reader').classList.remove('hidden');
-            const html5QrcodeScanner = new Html5Qrcode("reader");
-            
-            html5QrcodeScanner.start(
+            const reader = document.getElementById('reader');
+            const laser = document.getElementById('scannerLaser');
+            reader.classList.remove('hidden');
+            laser.style.display = 'block';
+            speak("Scanner active. Center the barcode.");
+
+            const scanner = new Html5Qrcode("reader");
+            scanner.start(
                 { facingMode: "environment" }, 
-                { fps: 10, qrbox: 250 }, 
+                { fps: 15, qrbox: {width: 250, height: 150} },
                 (text) => {
-                    html5QrcodeScanner.stop();
-                    document.getElementById('reader').classList.add('hidden');
-                    speak("Barcode detected. Fetching data.");
+                    if (navigator.vibrate) navigator.vibrate(200); // 📳 Vibrate on success
+                    scanner.stop();
+                    reader.classList.add('hidden');
+                    laser.style.display = 'none';
                     fetchByBarcode(text);
                 },
-                (err) => { /* Ignore standard scanning errors */ }
-            ).catch(err => {
-                alert("Camera error. Check permissions.");
-                speak("Camera error. Please use manual search.");
+                () => {}
+            ).catch(() => speak("Camera error."));
+        }
+
+        function resetUI() {
+            ['resultArea', 'searchSuggestions', 'contributeArea', 'rawDataCard'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
             });
+        }
+
+        function toggleRawData() {
+            const card = document.getElementById('rawDataCard');
+            card.classList.toggle('hidden');
         }
 
         function speak(text) {
