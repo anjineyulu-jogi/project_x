@@ -8,9 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 # --- 🧠 GEMINI AI CONFIGURATION ---
-# Using the key you provided
+# Using the key you provided and the latest Gemini 3.1 Pro flagship model
 genai.configure(api_key="AIzaSyCPwXJN6vTTpXYez6lO-xNBtZqGg2-k0_8")
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-3.1-pro') 
 
 SYSTEM_PROMPT = """
 You are the Pineapple Nutrition Brain, a biochemical nutritionist. 
@@ -49,13 +49,20 @@ app.add_middleware(
 
 # --- 🤖 THE AI ANALYSIS LAYER ---
 async def analyze_with_gemini(product_data):
-    """Sends raw DB data to Gemini for deep biochemical research."""
+    """Sends raw DB data to Gemini 3.1 Pro for deep biochemical research."""
     try:
         combined_input = f"{SYSTEM_PROMPT}\n\nDATA:\n{json.dumps(product_data)}"
         response = model.generate_content(combined_input)
-        # Clean the response in case Gemini adds markdown backticks
-        clean_json = response.text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_json)
+        
+        # 🧼 CLEANING THE AI RESPONSE 
+        # Gemini 3.1 often wraps JSON in markdown blocks; we strip those out.
+        clean_json = response.text
+        if "```json" in clean_json:
+            clean_json = clean_json.split("```json")[1].split("```")[0]
+        elif "```" in clean_json:
+            clean_json = clean_json.split("```")[1].split("```")[0]
+            
+        return json.loads(clean_json.strip())
     except Exception as e:
         print(f"AI Error: {e}")
         return None
@@ -72,7 +79,7 @@ def serve_webpage():
 
 @app.get("/scan/{barcode}")
 async def scan_product(barcode: str):
-    """Fetches DNA from DB, then passes it through the Gemini Brain."""
+    """Fetches DNA from DB, then passes it through the Gemini 3.1 Pro Brain."""
     try:
         conn = sqlite3.connect(DB_FILE)
         conn.row_factory = sqlite3.Row
@@ -86,7 +93,7 @@ async def scan_product(barcode: str):
 
         product_data = dict(row)
         
-        # ⚡️ ACTIVATE GEMINI RESEARCH ⚡️
+        # ⚡️ ACTIVATE GEMINI 3.1 PRO RESEARCH ⚡️
         ai_research = await analyze_with_gemini(product_data)
         
         # Merge AI insights into the original data
