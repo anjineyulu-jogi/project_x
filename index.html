@@ -3,23 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pineapple AI</title>
+    <title>Pineapple AI Nutri-Scanner</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --dark: #212529; }
-        body { font-family: system-ui, sans-serif; padding: 15px; max-width: 500px; margin: 0 auto; background: #f0f2f5; }
+        body { font-family: system-ui, sans-serif; padding: 15px; max-width: 500px; margin: 0 auto; background: #f0f2f5; color: var(--dark); line-height: 1.5; }
+        h1 { text-align: center; margin-bottom: 20px; }
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
         input { flex-grow: 1; padding: 12px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px; }
-        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
+        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; }
         .search-btn { background: var(--primary); color: white; }
         .camera-btn { background: var(--dark); color: white; width: 100%; margin-bottom: 10px;}
+        
+        /* 🎯 SCANNER OVERLAY */
+        #reader { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
+        .laser { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--success); box-shadow: 0 0 12px var(--success); z-index: 10; animation: scanning 2s infinite linear; display: none; }
+        @keyframes scanning { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+
         .result-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .grade-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .grade-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .grade-badge { font-size: 32px; font-weight: 900; }
         .grade-a { color: var(--success); }
         .grade-e { color: var(--danger); }
         .hidden { display: none; }
+        .sr-only { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+        .social-link { text-decoration: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; color: white; display: block; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -28,12 +37,14 @@
 
     <div class="card">
         <div class="input-group">
-            <input type="text" id="userInput" placeholder="Search or Scan..." aria-label="Search">
+            <input type="text" id="userInput" placeholder="Search product..." aria-label="Product search">
             <button class="search-btn" onclick="handleSearch()">Search</button>
         </div>
         <button class="camera-btn" onclick="startCamera()">📷 Scan Barcode</button>
-        <div id="reader" class="hidden"></div>
+        <div id="reader" class="hidden"><div class="laser" id="scannerLaser"></div></div>
     </div>
+
+    <div aria-live="assertive" class="sr-only" id="audioAnnouncer"></div>
 
     <div id="searchSuggestions" class="card hidden">
         <ul id="resultsList" style="list-style:none; padding:0;"></ul>
@@ -41,38 +52,53 @@
 
     <div id="resultArea" class="card hidden">
         <div class="grade-header">
-            <h2 id="productName" style="margin:0; font-size: 18px;">Product Name</h2>
+            <h2 id="productName" style="margin:0; font-size: 20px;">Product Name</h2>
             <div id="healthGrade" class="grade-badge"></div>
         </div>
-        <p id="aiSummary" style="font-size: 16px; font-weight: 500; color: #333; margin-top:15px;"></p>
+        <p id="aiSummary" style="font-size: 17px; font-weight: 500; color: #333; margin-top:15px;"></p>
         <div id="aiWarnings" style="color: var(--danger); font-size: 14px; font-weight: bold; margin-bottom: 10px;"></div>
         <button onclick="toggleRawData()" style="background:#eee; width:100%; margin-top:10px; padding:10px; border-radius:8px;">View Raw DNA</button>
-        <pre id="rawDataCard" class="hidden" style="background:#222; color:#0f0; padding:10px; border-radius:5px; font-size:11px; overflow:auto;"></pre>
+        <pre id="rawDataCard" class="hidden" style="background:#222; color:#0f0; padding:10px; border-radius:5px; margin-top:10px; font-family:monospace; font-size:11px; overflow-x:auto;"></pre>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top:0;">Support</h3>
+        <a href="https://wa.me/919611249874" class="social-link" style="background:#25D366;">WhatsApp Support</a>
+        <a href="mailto:jogi.workdocs@gmail.com" class="social-link" style="background:#EA4335;">Email Feedback</a>
     </div>
 
     <script>
         const BASE_URL = "";
 
-        // 🎹 Listen for Enter Key
-        document.getElementById("userInput").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
-        });
-
         async function handleSearch() {
             const query = document.getElementById('userInput').value.trim();
             if (!query) return;
             resetUI();
+            speak("Searching...");
             try {
-                const searchRes = await fetch(`${BASE_URL}/search/${query}`);
-                const searchData = await searchRes.json();
-                showResultsList(searchData.results);
-            } catch (e) { console.error(e); }
+                const scanRes = await fetch(`${BASE_URL}/scan/${query}`);
+                if (scanRes.ok) showProductDetail(await scanRes.json());
+                else {
+                    const searchRes = await fetch(`${BASE_URL}/search/${query}`);
+                    const searchData = await searchRes.json();
+                    showResultsList(searchData.results);
+                }
+            } catch (e) { speak("Search error."); }
         }
+
+        // 🎹 Search on Enter Key
+        document.getElementById("userInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
+        });
 
         function showResultsList(results) {
             const list = document.getElementById('resultsList');
             list.innerHTML = "";
             document.getElementById('searchSuggestions').classList.remove('hidden');
+            if (results.length === 0) {
+                list.innerHTML = "<p>No products found.</p>";
+                return;
+            }
             results.forEach(item => {
                 const li = document.createElement('li');
                 li.className = "result-item";
@@ -81,39 +107,44 @@
                 li.onclick = () => fetchByBarcode(item.code);
                 list.appendChild(li);
             });
+            speak(`${results.length} matches found.`);
         }
 
         async function fetchByBarcode(barcode) {
             resetUI();
             document.getElementById('resultArea').classList.remove('hidden');
-            document.getElementById('productName').innerText = "Loading...";
-            document.getElementById('aiSummary').innerText = "Gemini 3.1 is researching..."; //
-            
+            document.getElementById('productName').innerText = "Analyzing...";
+            document.getElementById('aiSummary').innerText = "Gemini is researching nutritional DNA...";
             try {
                 const res = await fetch(`${BASE_URL}/scan/${barcode}`);
-                const data = await res.json();
-                showProductDetail(data);
-            } catch (e) { console.error(e); }
+                showProductDetail(await res.json());
+            } catch (e) { speak("Error loading."); }
         }
 
         function showProductDetail(data) {
+            resetUI();
+            document.getElementById('resultArea').classList.remove('hidden');
             document.getElementById('productName').innerText = data.product_name;
-            const finalGrade = data.ai_grade || data.C10_health_grade_alpha || "?";
+            const grade = data.ai_grade || data.C10_health_grade_alpha || "?";
             const badge = document.getElementById('healthGrade');
-            badge.innerText = finalGrade;
-            badge.className = `grade-badge ${finalGrade === 'A' || finalGrade === 'B' ? 'grade-a' : (finalGrade === 'E' ? 'grade-e' : '')}`;
+            badge.innerText = grade;
+            badge.className = `grade-badge ${grade === 'A' || grade === 'B' ? 'grade-a' : (grade === 'E' ? 'grade-e' : '')}`;
             
-            document.getElementById('aiSummary').innerText = data.ai_narrative || "No summary found.";
+            document.getElementById('aiSummary').innerText = data.ai_narrative || "Analysis complete.";
             const warnings = data.ai_warnings ? data.ai_warnings.join(", ") : "";
             document.getElementById('aiWarnings').innerText = warnings ? "⚠️ " + warnings : "";
             document.getElementById('rawDataCard').innerText = JSON.stringify(data, null, 2);
+            speak(`${data.product_name}. Health Grade ${grade}.`);
         }
 
         function startCamera() {
             const reader = document.getElementById('reader');
+            const laser = document.getElementById('scannerLaser');
             reader.classList.remove('hidden');
+            laser.style.display = 'block';
             const scanner = new Html5Qrcode("reader");
             scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
+                if (navigator.vibrate) navigator.vibrate(200);
                 scanner.stop();
                 reader.classList.add('hidden');
                 fetchByBarcode(text);
@@ -122,6 +153,7 @@
 
         function resetUI() { ['resultArea', 'searchSuggestions', 'rawDataCard'].forEach(id => document.getElementById(id).classList.add('hidden')); }
         function toggleRawData() { document.getElementById('rawDataCard').classList.toggle('hidden'); }
+        function speak(text) { document.getElementById('audioAnnouncer').innerText = text; }
     </script>
 </body>
 </html>
