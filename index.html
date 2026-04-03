@@ -6,64 +6,29 @@
     <title>Pineapple AI Nutri-Scanner</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        :root {
-            --primary: #007bff;
-            --success: #28a745;
-            --danger: #dc3545;
-            --dark: #212529;
-            --light: #f8f9fa;
-        }
-
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            padding: 15px; max-width: 500px; margin: 0 auto; 
-            background: #f0f2f5; color: var(--dark); line-height: 1.5;
-        }
-
-        h1 { text-align: center; color: var(--dark); margin-bottom: 20px; }
-
-        .card {
-            background: white; border-radius: 12px; padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px;
-        }
-
+        :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; --dark: #212529; }
+        body { font-family: system-ui, sans-serif; padding: 15px; max-width: 500px; margin: 0 auto; background: #f0f2f5; color: var(--dark); line-height: 1.5; }
+        h1 { text-align: center; margin-bottom: 20px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
         input { flex-grow: 1; padding: 12px; border-radius: 8px; border: 2px solid #ddd; font-size: 16px; }
-        
-        button { 
-            padding: 12px; border-radius: 8px; border: none; 
-            cursor: pointer; font-weight: bold; font-size: 16px;
-        }
-        
+        button { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; }
         .search-btn { background: var(--primary); color: white; }
         .camera-btn { background: var(--dark); color: white; width: 100%; margin-bottom: 10px;}
         .contribute-btn { background: var(--success); color: white; width: 100%; margin-top: 10px; }
-        .feedback-btn { background: #eee; color: var(--dark); width: 100%; margin-top: 10px; font-size: 14px; }
-
+        
         /* 🎯 SCANNER OVERLAY */
         #reader { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
-        .laser {
-            position: absolute; top: 0; left: 0; width: 100%; height: 3px;
-            background: var(--success); box-shadow: 0 0 12px var(--success);
-            z-index: 10; animation: scanning 2s infinite linear; display: none;
-        }
+        .laser { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--success); box-shadow: 0 0 12px var(--success); z-index: 10; animation: scanning 2s infinite linear; display: none; }
         @keyframes scanning { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
 
-        .results-list { list-style: none; padding: 0; }
-        .result-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
-
-        /* Grade Display */
-        .grade-header { 
-            display: flex; justify-content: space-between; align-items: center; 
-            border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; 
-        }
+        .result-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .grade-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .grade-badge { font-size: 32px; font-weight: 900; }
         .grade-a { color: var(--success); }
         .grade-e { color: var(--danger); }
-        
         .hidden { display: none; }
         .sr-only { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
-
         .social-links { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .social-link { text-decoration: none; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; color: white; }
     </style>
@@ -87,30 +52,25 @@
 
     <div id="contributeArea" class="card hidden">
         <h3 style="color:var(--danger); margin:0;">Product Not Found</h3>
-        <p>Not in our DNA database yet. Help the community by adding it!</p>
+        <p>Help the community by adding it!</p>
         <input type="text" id="contribName" placeholder="Product Name" style="width:90%; margin-bottom:10px;">
         <input type="text" id="contribBrand" placeholder="Brand Name" style="width:90%;">
-        <button class="contribute-btn" onclick="submitContribution()">Submit Product</button>
+        <button class="contribute-btn" onclick="submitContribution()">Submit</button>
     </div>
 
     <div id="searchSuggestions" class="card hidden">
-        <ul id="resultsList" class="results-list"></ul>
+        <ul id="resultsList" style="list-style:none; padding:0;"></ul>
     </div>
 
     <div id="resultArea" class="card hidden">
         <div class="grade-header">
             <h2 id="productName" style="margin:0; font-size: 20px;">Product Name</h2>
-            <div id="healthGrade" class="grade-badge">A</div>
+            <div id="healthGrade" class="grade-badge"></div>
         </div>
-        
-        <p id="aiSummary" style="font-size: 17px; font-weight: 500; color: #333;">Analyzing...</p>
-        
+        <p id="aiSummary" style="font-size: 17px; font-weight: 500; color: #333; margin-top:15px;"></p>
         <div id="aiWarnings" style="color: var(--danger); font-size: 14px; font-weight: bold; margin-bottom: 10px;"></div>
-
-        <button class="feedback-btn" onclick="toggleRawData()">View Raw DNA</button>
-        <div id="rawDataCard" class="hidden" style="background:#222; color:#0f0; padding:10px; border-radius:5px; margin-top:10px; font-family:monospace; font-size:11px; overflow-x:auto;">
-            <pre id="rawJson"></pre>
-        </div>
+        <button onclick="toggleRawData()" style="background:#eee; width:100%; margin-top:10px;">View Raw DNA</button>
+        <pre id="rawDataCard" class="hidden" style="background:#222; color:#0f0; padding:10px; border-radius:5px; margin-top:10px; font-family:monospace; font-size:11px; overflow-x:auto;"></pre>
     </div>
 
     <div class="card">
@@ -129,12 +89,10 @@
             if (!query) return;
             resetUI();
             speak("Searching...");
-
             try {
                 const scanRes = await fetch(`${BASE_URL}/scan/${query}`);
-                if (scanRes.ok) {
-                    showProductDetail(await scanRes.json());
-                } else {
+                if (scanRes.ok) showProductDetail(await scanRes.json());
+                else {
                     const searchRes = await fetch(`${BASE_URL}/search/${query}`);
                     const searchData = await searchRes.json();
                     if (searchData.results.length === 0) showContributeForm(query);
@@ -150,40 +108,35 @@
             results.forEach(item => {
                 const li = document.createElement('li');
                 li.className = "result-item";
-                li.innerHTML = `<strong>${item.product_name}</strong><br><small>${item.brands || 'Unknown'}</small>`;
+                // 🎨 Added the grade display back to search list
+                const grade = item.C10_health_grade_alpha || "?";
+                li.innerHTML = `<div><strong>${item.product_name}</strong><br><small>${item.brands || 'Unknown'}</small></div><div style="font-weight:900; color:${grade === 'A' ? '#28a745' : '#dc3545'}">${grade}</div>`;
                 li.onclick = () => fetchByBarcode(item.code);
                 list.appendChild(li);
             });
-            speak(`${results.length} matches found.`);
         }
 
         async function fetchByBarcode(barcode) {
+            document.getElementById('aiSummary').innerText = "Gemini is analyzing the nutritional DNA...";
             try {
-                speak("Analyzing with AI...");
                 const res = await fetch(`${BASE_URL}/scan/${barcode}`);
                 showProductDetail(await res.json());
-            } catch (e) { speak("Analysis failed."); }
+            } catch (e) { speak("Error loading."); }
         }
 
         function showProductDetail(data) {
             resetUI();
             document.getElementById('resultArea').classList.remove('hidden');
             document.getElementById('productName').innerText = data.product_name;
-            
-            // PRIORITY: Use AI Grade first, then Database Grade
             const grade = data.ai_grade || data.C10_health_grade_alpha || "?";
             const badge = document.getElementById('healthGrade');
             badge.innerText = grade;
             badge.className = `grade-badge ${grade === 'A' || grade === 'B' ? 'grade-a' : (grade === 'E' ? 'grade-e' : '')}`;
-            
-            const summary = data.ai_narrative || "Analysis complete. Review raw DNA for details.";
-            document.getElementById('aiSummary').innerText = summary;
-            
+            document.getElementById('aiSummary').innerText = data.ai_narrative || "Analysis complete.";
             const warnings = data.ai_warnings ? data.ai_warnings.join(", ") : "";
             document.getElementById('aiWarnings').innerText = warnings ? "⚠️ " + warnings : "";
-
-            document.getElementById('rawJson').innerText = JSON.stringify(data, null, 2);
-            speak(`${data.product_name}. Health Grade ${grade}. ${summary}`);
+            document.getElementById('rawDataCard').innerText = JSON.stringify(data, null, 2);
+            speak(`${data.product_name}. Health Grade ${grade}.`);
         }
 
         function startCamera() {
@@ -191,45 +144,20 @@
             const laser = document.getElementById('scannerLaser');
             reader.classList.remove('hidden');
             laser.style.display = 'block';
-            speak("Point camera at barcode.");
-
             const scanner = new Html5Qrcode("reader");
-            scanner.start(
-                { facingMode: "environment" }, 
-                { fps: 15, qrbox: {width: 250, height: 150} },
-                (text) => {
-                    if (navigator.vibrate) navigator.vibrate(200);
-                    scanner.stop();
-                    reader.classList.add('hidden');
-                    fetchByBarcode(text);
-                },
-                () => {}
-            ).catch(() => speak("Camera blocked."));
+            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
+                if (navigator.vibrate) navigator.vibrate(200);
+                scanner.stop();
+                reader.classList.add('hidden');
+                fetchByBarcode(text);
+            }, () => {});
         }
 
-        function resetUI() {
-            ['resultArea', 'searchSuggestions', 'contributeArea', 'rawDataCard'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
-            });
-        }
-
-        function toggleRawData() {
-            document.getElementById('rawDataCard').classList.toggle('hidden');
-        }
-
-        function speak(text) {
-            document.getElementById('audioAnnouncer').innerText = text;
-        }
-
-        function showContributeForm(q) {
-            document.getElementById('contributeArea').classList.remove('hidden');
-            if(isNaN(q)) document.getElementById('contribName').value = q;
-        }
-
-        function submitContribution() {
-            alert("Thanks! Added to community review.");
-            document.getElementById('contributeArea').classList.add('hidden');
-        }
+        function resetUI() { ['resultArea', 'searchSuggestions', 'contributeArea', 'rawDataCard'].forEach(id => document.getElementById(id).classList.add('hidden')); }
+        function toggleRawData() { document.getElementById('rawDataCard').classList.toggle('hidden'); }
+        function speak(text) { document.getElementById('audioAnnouncer').innerText = text; }
+        function showContributeForm(q) { document.getElementById('contributeArea').classList.remove('hidden'); if(isNaN(q)) document.getElementById('contribName').value = q; }
+        function submitContribution() { alert("Contribution received! Thank you buddy."); document.getElementById('contributeArea').classList.add('hidden'); }
     </script>
 </body>
 </html>

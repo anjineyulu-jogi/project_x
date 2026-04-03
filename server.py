@@ -2,27 +2,26 @@ import os
 import zipfile
 import sqlite3
 import json
-from google import genai  # Upgraded Library
-from google.genai import types
+from google import genai
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-# --- 🧠 GEMINI 3.1 PRO CONFIGURATION ---
-# The new SDK automatically looks for the GEMINI_API_KEY env var, 
-# or we can set it explicitly here.
-client = genai.Client(api_key="AIzaSyCPwXJN6vTTpXYez6lO-xNBtZqGg2-k0_8")
-MODEL_ID = "gemini-3.1-pro" #
+# --- 🧠 GEMINI 3 PRO CONFIGURATION (SECURE) ---
+# Pulled from Render Environment Variables to prevent vulnerabilities
+api_key = os.environ.get("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key)
+MODEL_ID = "gemini-3-pro" # Upgraded to 3 Pro
 
 SYSTEM_PROMPT = """
-You are the Pineapple Nutrition Brain, a biochemical nutritionist. 
+You are the Pineapple Nutrition Brain. 
 Analyze the food data. Cross-reference NOVA (C7) with ingredients.
 If a product is NOVA 4 but has simple ingredients (like Yogurt with pectin), re-evaluate.
 Output ONLY a valid JSON object:
 {
   "corrected_grade": "A-E",
-  "narrative": "2-sentence warm explanation for a buddy.",
-  "warning_flags": ["List specific harmful additives"],
+  "narrative": "Provide a 2-sentence warm, helpful explanation for a friend.",
+  "warning_flags": ["List harmful additives"],
   "healthier_alternative": "A generic suggestion"
 }
 """
@@ -36,17 +35,16 @@ if not os.path.exists(DB_FILE):
         with zipfile.ZipFile(ZIP_FILE, 'r') as zip_ref:
             zip_ref.extractall(".")
 
-app = FastAPI(title="Pineapple AI Nutri-Scanner")
+app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 async def analyze_with_gemini(product_data):
-    """Uses the new Google GenAI SDK for Gemini 3.1 Pro analysis."""
+    """Uses Gemini 3 Pro to generate real summaries."""
     try:
         response = client.models.generate_content(
             model=MODEL_ID,
             contents=f"{SYSTEM_PROMPT}\n\nDATA: {json.dumps(product_data)}"
         )
-        # Strip markdown if present
         text = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(text)
     except Exception as e:
@@ -85,7 +83,13 @@ def search(query: str):
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT code, product_name, brands FROM products WHERE product_name LIKE ? LIMIT 10", (f"%{query}%",))
+    # Fixed: Now selecting the health grade to show in search results
+    cursor.execute("""
+        SELECT code, product_name, brands, C10_health_grade_alpha 
+        FROM products 
+        WHERE product_name LIKE ? 
+        LIMIT 15
+    """, (f"%{query}%",))
     rows = cursor.fetchall()
     conn.close()
     return {"results": [dict(row) for row in rows]}
